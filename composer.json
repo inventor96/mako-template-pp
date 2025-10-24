@@ -1,0 +1,23 @@
+{
+    "name": "inventor96/mako-template-pp",
+    "type": "library",
+    "description": "Mako Template++. Additional filters I use within the Mako templating system, with the ability to register more.",
+    "keywords": ["mako", "template", "preprocessor", "templating", "engine"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Caleb Hornbeck",
+            "homepage": "https://github.com/inventor96",
+            "role": "Developer"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "inventor96\\MakoTemplatePP\\": "src"
+        }
+    },
+    "require": {
+        "php": "~8.1.0|~8.2.0|~8.3.0",
+        "mako/framework": "^10.0"
+    }
+}
