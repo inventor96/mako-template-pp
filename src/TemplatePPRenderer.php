@@ -49,12 +49,12 @@ class TemplatePPRenderer extends Template {
 	/**
 	 * Formats a DateTime object (including Mako `Time` objects), or a DateTime string to a humanly-readable string.
 	 *
-	 * @param DateTime|string|null $obj
+	 * @param DateTime|string|false|null $obj
 	 * @param string|null $empty_replacement If $obj is empty, what replacement string should be returned instead.
 	 * @param string|null $format Optional format string to override the default format.
 	 * @return string
 	 */
-	protected function dateDisplay(DateTime|string|null $obj, ?string $format = null, ?string $empty_replacement = null): string {
+	protected function dateDisplay(DateTime|string|false|null $obj, ?string $format = null, ?string $empty_replacement = null): string {
 		// empty replacement
 		if (empty($obj)) {
 			return $empty_replacement ?? $this->config->get('templatepp::template.time.empty_replacement', '---');
