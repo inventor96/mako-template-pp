@@ -63,4 +63,50 @@ Alias to `{{ view: 'partials.<partial_name>' [, <param>, ...] }}`, allowing new 
 Mark code for "filtering up" the compiled PHP so it can be part of a parameter in another template tag. This is particularly useful when you need to pass dynamic values to template params that require PHP code. e.g. `{{ route: 'route.name', [ 'param' => {{ up: {{ pluralize: 'value' }} }} ] }}`.
 
 ### Creating Custom Filters
-TBD...
+#### Simple Filters
+To create and register custom template filters, you need to use the `FilterRegistry` class provided by this package. You can register the filters anywhere the Mako container is available (e.g. in the `bootstrap.php` file, in a service class, in a controller, etc.). Below is an example of how to use a service class to create a custom filter that converts a string to uppercase.
+
+```php
+namespace app\services;
+
+use inventor96\MakoTemplatePP\FilterRegistry;
+use mako\application\services\Service;
+
+class UppercaseTemplateFilter extends Service
+{
+	/**
+	 * Registers the service.
+	 */
+	public function register(): void
+	{
+		// get the FilterRegistry from the container
+		$registry = $this->container->get(FilterRegistry::class);
+
+		// register the 'uppercase' filter
+		$registry->registerFilterCallback('uppercase', function ($string) {
+			return strtoupper($string);
+		});
+	}
+}
+```
+
+Then, enable the service in your `application.php` config:
+
+```php
+[
+	'services' => [
+		'core' => [
+			app\services\UppercaseTemplateFilter::class,
+		],
+	],
+];
+```
+
+You can now use the `uppercase` filter in your templates:
+
+```php
+{{ uppercase: 'hello world' }} <!-- Outputs: HELLO WORLD -->
+```
+
+#### Advanced Filters
+For more complex filters that require additional setup or dependencies, you can use the `registerCompilerHandler()` and `registerRenderMethod()` methods of the `FilterRegistry` class. These methods allow you to define custom compiler handlers and render methods for your filters. Compiler handlers are used to convert the template syntax into PHP code. Render methods are called during each render of the compiled PHP template. Refer to the method docblocks in `FilterRegistry` for more details. See also the `mako\view\compilers\Template` and `mako\view\renderers\Template` classes for reference on how Mako's templating system works.

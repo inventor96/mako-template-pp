@@ -9,8 +9,11 @@ use mako\http\routing\Routes;
 use mako\http\routing\URLBuilder;
 use mako\session\Session;
 use mako\view\renderers\Template;
+use RuntimeException;
 
 class TemplatePPRenderer extends Template {
+	protected ?FilterRegistry $filter_registry = null;
+
 	public function __construct(
 		protected FileSystem $fs,
 		protected Application $app,
@@ -21,6 +24,11 @@ class TemplatePPRenderer extends Template {
 	) {
 		// path is the same one used in the `ViewFactoryService`
 		parent::__construct($fs, "{$app->getStoragePath()}/cache/views");
+
+		// only load the filter registry if it exists in the container (i.e. something has probably been registered in it)
+		if ($this->app->getContainer()->hasInstanceOf(FilterRegistry::class)) {
+			$this->filter_registry = $this->app->getContainer()->get(FilterRegistry::class);
+		}
 	}
 
 	/**
@@ -32,7 +40,34 @@ class TemplatePPRenderer extends Template {
 	 * @codeCoverageIgnore
 	 */
 	protected function compile(string $view): void {
-		(new TemplatePPCompiler($this->fileSystem, $this->cachePath, $view))->compile();
+		(new TemplatePPCompiler(
+			$this->fileSystem,
+			$this->cachePath,
+			$view,
+			$this->filter_registry
+		))->compile();
+	}
+
+	/**
+	 * Magic method to handle calls to custom render methods registered in the FilterRegistry.
+	 *
+	 * @param string $name
+	 * @param array $arguments
+	 * @return mixed
+	 */
+	public function __call($name, $arguments) {
+		// check if we have a filter registry
+		if ($this->filter_registry === null) {
+			throw new RuntimeException("Method '{$name}' not found.");
+		}
+
+		// check if the method is registered
+		if (!($method = $this->filter_registry->getRenderMethod($name))) {
+			throw new RuntimeException("Method '{$name}' not found.");
+		}
+
+		// call the registered method
+		return call_user_func($method, ...$arguments);
 	}
 
 	/**

@@ -3,6 +3,7 @@ namespace inventor96\MakoTemplatePP;
 
 use mako\file\FileSystem;
 use mako\view\compilers\Template;
+use RuntimeException;
 
 /**
  * An extension to the original templating engine included with Mako.
@@ -10,22 +11,77 @@ use mako\view\compilers\Template;
  * The compile order is adjusted in the constructor, and any methods called from a template are defined in TemplatePPRenderer.php.
  */
 class TemplatePPCompiler extends Template {
-	public function __construct(FileSystem $fs, string $cache_path, string $template) {
+	/**
+	 * Constructor.
+	 *
+	 * @param FileSystem $fs
+	 * @param string $cache_path
+	 * @param string $template
+	 * @param FilterRegistry|null $filter_registry If the filter registry is provided, extra filters will be included.
+	 */
+	public function __construct(FileSystem $fs, string $cache_path, string $template, protected ?FilterRegistry $filter_registry = null) {
 		parent::__construct($fs, $cache_path, $template);
 
-		// include our stuff
+		// find our desired location in the compile order
 		$location = array_search('views', $this->compileOrder);
-		if ($location !== false) {
-			array_splice($this->compileOrder, $location, 0, [
-				// our method names from this class
-				'filterUps',
-				'routes',
-				'pluralize',
-				'times',
-				'filterDowns',
-				'partials',
-			]);
+
+		// check for incompatible Mako version
+		if ($location === false) {
+			throw new RuntimeException("Incompatible Mako version: 'views' not found in compile order.");
 		}
+
+		// insert our custom compilation methods into the compile order
+		array_splice($this->compileOrder, $location, 0, [
+			'filterUps',
+			'routes',
+			'pluralize',
+			'times',
+			'filterDowns',
+			'partials',
+		]);
+
+		// if we have a filter registry, register any custom compiler handlers
+		if ($filter_registry !== null) {
+			foreach ($filter_registry->getCompilerHandlers() as $index => $handler_info) {
+				// set default position if none provided
+				if ($handler_info['priority'] === null) {
+					$handler_info['priority'] = 'filterDowns';
+				}
+
+				// determine position
+				$position = is_int($handler_info['priority'])
+					? $handler_info['priority']
+					: array_search($handler_info['priority'], $this->compileOrder, true);
+
+				// insert handler
+				if ($position === false) {
+					throw new RuntimeException("Invalid compile order position: '{$handler_info['priority']}' not found.");
+				}
+				array_splice($this->compileOrder, $position, 0, ["custom_handler_{$index}"]);
+			}
+		}
+	}
+
+	/**
+	 * Magic method to handle calls to custom compiler handlers.
+	 *
+	 * @param string $name
+	 * @param array $arguments
+	 * @return mixed
+	 */
+	public function __call($name, $arguments) {
+		// handle custom compiler handlers
+		if (str_starts_with($name, 'custom_handler_') && $this->filter_registry !== null) {
+			$index = (int)substr($name, strlen('custom_handler_'));
+			$handler_info = $this->filter_registry->getCompilerHandlers()[$index] ?? null;
+			if ($handler_info !== null) {
+				return call_user_func($handler_info['handler'], $arguments[0]);
+			} else {
+				throw new RuntimeException("Compiler handler at index {$index} not found in FilterRegistry.");
+			}
+		}
+
+		throw new RuntimeException("Undefined method called in TemplatePPCompiler: '{$name}'");
 	}
 
 	/**
