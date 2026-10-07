@@ -5,9 +5,7 @@ use DateTime;
 use mako\application\Application;
 use mako\config\Config;
 use mako\file\FileSystem;
-use mako\http\routing\Routes;
 use mako\http\routing\URLBuilder;
-use mako\session\Session;
 use mako\view\renderers\Template;
 use RuntimeException;
 
@@ -18,9 +16,7 @@ class TemplatePPRenderer extends Template {
 		protected FileSystem $fs,
 		protected Application $app,
 		protected URLBuilder $builder,
-		protected Session $session,
 		protected Config $config,
-		protected Routes $routes,
 	) {
 		// path is the same one used in the `ViewFactoryService`
 		parent::__construct($fs, "{$app->getStoragePath()}/cache/views");
